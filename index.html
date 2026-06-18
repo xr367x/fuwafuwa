@@ -301,7 +301,7 @@ function importData(event){
 
       items = importedItems;
 
-      localStorage.setItem("review_master", JSON.stringify(items));
+      save();
 
       renderToday();
       renderAll();
