@@ -164,23 +164,7 @@
             <div id="result"></div>
         </div>
     </div>
-<div id="add" class="page">
 
-<div class="card">
-<h2>ログイン</h2>
-
-<input id="loginId" placeholder="ID">
-
-<input id="loginPass"
-type="password"
-placeholder="パスワード">
-
-<button class="btn primary"
-onclick="login()">
-ログイン
-</button>
-
-</div>
     <div id="add" class="page">
         <div class="card">
             <h2>問題追加</h2>
@@ -379,49 +363,6 @@ onclick="deleteProblem(${index})">
 
         nextQ();
         renderStats();
-
-        async function login(){
-
-const id =
-document.getElementById("loginId").value;
-
-const pass =
-document.getElementById("loginPass").value;
-
-const url =
-"https://script.google.com/macros/s/AKfycbwyYRtKQcC8dKJgrZDc_jALI0P30AsxiPRCeZiXpATEkdqEBAVnBdHzExXl6BoPVrCN/exec"
-+
-"?id="
-+ encodeURIComponent(id)
-+
-"&pass="
-+ encodeURIComponent(pass);
-
-const res =
-await fetch(url);
-
-const json =
-await res.json();
-
-if(json.success){
-
-alert("ログイン成功");
-
-problems =
-JSON.parse(json.data);
-
-renderList();
-renderStats();
-nextQ();
-
-}else{
-
-alert("ログイン失敗");
-
-}
-
-}
-        
     </script>
 </body>
 
