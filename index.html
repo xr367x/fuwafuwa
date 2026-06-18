@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>暗記マスター Pro</title>
+    <meta name="theme-color" content="#ffffff">
+    <style>
+         :root {
+            --bg: #f5f7fb;
+            --card: #fff;
+            --text: #111827;
+            --sub: #6b7280;
+            --accent: #2563eb;
+            --shadow: 0 8px 30px rgba(0, 0, 0, .08);
+        }
+        
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent
+        }
+        
+        body {
+            margin: 0;
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text)
+        }
+        
+        .page {
+            display: none;
+            padding: 18px 18px 100px
+        }
+        
+        .active {
+            display: block
+        }
+        
+        .hero {
+            font-size: 14px;
+            color: var(--sub);
+            margin-bottom: 10px
+        }
+        
+        .card {
+            background: var(--card);
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px
+        }
+        
+        .problem {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.3;
+            margin: 20px 0
+        }
+        
+        input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 16px;
+            border: 2px solid #e5e7eb;
+            font-size: 16px
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            margin-top: 12px
+        }
+        
+        .primary {
+            background: var(--accent);
+            color: #fff
+        }
+        
+        .good {
+            color: #16a34a
+        }
+        
+        .bad {
+            color: #dc2626
+        }
+        
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #eee;
+            display: flex
+        }
+        
+        .nav button {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 4px;
+            color: #444
+        }
+        
+        .icon {
+            font-size: 22px;
+            display: block
+        }
+        
+        .label {
+            font-size: 12px
+        }
+        
+        .stat {
+            font-size: 36px;
+            font-weight: 800
+        }
+        
+        .small {
+            color: var(--sub)
+        }
+        
+        .item {
+            background: #fff;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            margin-bottom: 12px
+        }
+        
+        .item:active {
+            transform: scale(.98)
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: #fee2e2;
+            color: #b91c1c;
+            font-size: 12px
+        }
+        
+        details {
+            margin-top: 10px
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="quiz" class="page active">
+        <div class="hero">🔥 連続正解 <span id="streak">0</span></div>
+        <div class="card">
+            <div class="small">問題</div>
+            <div class="problem" id="q">問題を追加してください</div>
+            <input id="ans" placeholder="答えを入力">
+            <button class="btn primary" onclick="check()">回答する</button>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <div id="add" class="page">
+        <div class="card">
+            <h2>問題追加</h2>
+            <input id="newQ" placeholder="問題">
+            <input id="newA" placeholder="答え">
+            <button class="btn primary" onclick="addProblem()">追加</button>
+        </div>
+    </div>
+
+    <div id="list" class="page">
+        <div id="listArea"></div>
+    </div>
+
+    <div id="stats" class="page">
+        <div class="card">
+            <div class="small">総問題数</div>
+            <div class="stat" id="count">0</div>
+            <div class="small">総正解率</div>
+            <div class="stat" id="rate">0%</div>
+        </div>
+        <div class="card">
+            <h3>苦手ランキング</h3>
+            <div id="ranking"></div>
+        </div>
+    </div>
+
+    <div class="nav">
+        <button onclick="show('quiz')"><span class="icon">🏠</span><span class="label">クイズ</span></button>
+        <button onclick="show('add')"><span class="icon">➕</span><span class="label">追加</span></button>
+        <button onclick="show('list');renderList()"><span class="icon">📚</span><span class="label">一覧</span></button>
+        <button onclick="show('stats');renderStats()"><span class="icon">📊</span><span class="label">成績</span></button>
+    </div>
+
+    <script>
+        let problems = JSON.parse(localStorage.getItem("anki_pro") || "[]");
+        let current = -1,
+            streak = 0;
+
+        function save() {
+            localStorage.setItem("anki_pro", JSON.stringify(problems));
+        }
+
+        function acc(p) {
+            let t = p.c + p.w;
+            return t ? Math.round(p.c / t * 100) : 0;
+        }
+
+        function addProblem() {
+            let q = newQ.value.trim(),
+                a = newA.value.trim();
+            if (!q || !a) return;
+            problems.push({
+                q,
+                a,
+                c: 0,
+                w: 0
+            });
+            save();
+            newQ.value = "";
+            newA.value = "";
+            nextQ();
+        }
+
+        function weighted() {
+            let total = 0,
+                w = [];
+            problems.forEach(p => {
+                let x = ((p.w + 1) * (p.w + 1)) + (100 - acc(p));
+                w.push(x);
+                total += x;
+            });
+            let r = Math.random() * total;
+            for (let i = 0; i < w.length; i++) {
+                r -= w[i];
+                if (r <= 0) return i;
+            }
+            return 0;
+        }
+
+        function nextQ() {
+            if (!problems.length) {
+                document.getElementById("q").textContent = "まず問題を追加してください";
+                return;
+            }
+            current = weighted();
+            document.getElementById("q").textContent = problems[current].q;
+            ans.value = "";
+            result.innerHTML = "";
+        }
+
+        function check() {
+            if (current < 0) return;
+            let p = problems[current];
+            if (ans.value.trim() === p.a) {
+                p.c++;
+                streak++;
+                result.innerHTML = '<p class="good">✅ 正解！</p>';
+            } else {
+                p.w++;
+                streak = 0;
+                result.innerHTML = '<p class="bad">❌ 不正解<br>正解: ' + p.a + '</p>';
+            }
+            document.getElementById("streak").textContent = streak;
+            save();
+            renderStats();
+            setTimeout(nextQ, 1200);
+        }
+
+        function deleteProblem(index) {
+            if (!confirm("この問題を削除しますか？")) return;
+
+            problems.splice(index, 1);
+            save();
+
+            renderList();
+            renderStats();
+
+            if (problems.length) {
+                nextQ();
+            } else {
+                document.getElementById("q").textContent = "まず問題を追加してください";
+            }
+        }
+
+        function renderList() {
+            listArea.innerHTML = "";
+
+            [...problems]
+            .map((p, index) => ({
+                    p,
+                    index
+                }))
+                .sort((a, b) => acc(a.p) - acc(b.p))
+                .forEach(({
+                    p,
+                    index
+                }) => {
+
+                    let level =
+                        acc(p) < 40 ? "🔴 超苦手" :
+                        acc(p) < 70 ? "🟡 苦手" :
+                        "🟢 得意";
+
+                    listArea.innerHTML += `
+<div class="item">
+<div class="badge">${level}</div>
+
+<h3>${p.q}</h3>
+
+<div class="small">
+正解率 ${acc(p)}%
+</div>
+
+<details>
+<summary>答えを見る</summary>
+<p>${p.a}</p>
+</details>
+
+<button
+class="btn"
+style="
+margin-top:12px;
+background:#ef4444;
+color:white;
+"
+onclick="deleteProblem(${index})">
+削除
+</button>
+
+</div>`;
+                });
+        }
+
+
+
+
+        function renderStats() {
+            count.textContent = problems.length;
+            let c = 0,
+                w = 0;
+            problems.forEach(p => {
+                c += p.c;
+                w += p.w;
+            });
+            rate.textContent = (c + w) ? Math.round(c / (c + w) * 100) + "%" : "0%";
+            ranking.innerHTML = "";
+            [...problems].sort((a, b) => acc(a) - acc(b)).slice(0, 10).forEach((p, i) => {
+                ranking.innerHTML += `<p>${i+1}. ${p.q} (${acc(p)}%)</p>`;
+            });
+        }
+
+        function show(id) {
+            document.querySelectorAll(".page").forEach(x => x.classList.remove("active"));
+            document.getElementById(id).classList.add("active");
+        }
+
+        nextQ();
+        renderStats();
+    </script>
+</body>
+
+</html>
