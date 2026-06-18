@@ -160,8 +160,18 @@ let items=JSON.parse(localStorage.getItem('review_master_pro')||'[]');
 let currentPage=0,startX=0,startY=0;
 
 function save(){localStorage.setItem('review_master_pro',JSON.stringify(items));}
-function todayStr(){const d=new Date();d.setHours(0,0,0,0);return d.toISOString().split('T')[0];}
-function addDays(days){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
+function todayStr(){
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  return now.toISOString().split("T")[0];
+}
+function addDaysFrom(dateStr, days){
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().split("T")[0];
+}
 function formatDate(s){return s.replaceAll('-','/');}
 function dueItems(){const t=todayStr();return items.map((item,index)=>({item,index})).filter(x=>x.item.nextReview<=t);}
 
@@ -177,12 +187,29 @@ function addItem(){
 }
 
 function completeReview(index){
-  const item=items[index];
-  const add=item.level<intervals.length?intervals[item.level]:30;
-  item.nextReview=addDays(add);
-  item.level++;
-  item.done=(item.done||0)+1;
-  save();renderToday();renderAll();renderStats();
+  let item = items[index];
+
+  if(!item.created){
+    item.created = todayStr();
+  }
+
+  if(item.level === undefined){
+    item.level = 0;
+  }
+
+  if(item.level < intervals.length){
+    item.nextReview = addDaysFrom(item.created, intervals[item.level]);
+    item.level++;
+  }else{
+    const monthsAfter = item.level - intervals.length + 3;
+    item.nextReview = addDaysFrom(item.created, monthsAfter * 30);
+    item.level++;
+  }
+
+  save();
+  renderToday();
+  renderAll();
+  renderStats();
 }
 
 function deleteItem(index){
