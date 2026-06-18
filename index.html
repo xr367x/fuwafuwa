@@ -130,10 +130,20 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
         <h3 style="margin:0 0 8px">スケジュール</h3>
         <div class="meta">1日後 → 2日後 → 5日後 → 7日後 → 14日後 → 30日後 → 60日後 → 以後30日毎</div>
       </div>
-      <button onclick="exportData()">データを書き出し</button>
-
-<input type="file" id="importFile" accept=".json" onchange="importData(event)">
     </section>
+    <button class="primary" onclick="exportData()">データを書き出し</button>
+
+<input
+  type="file"
+  id="importFile"
+  accept=".json"
+  style="display:none"
+  onchange="importData(event)"
+>
+
+<button class="primary" onclick="document.getElementById('importFile').click()">
+データを読み込む
+</button>
   </div>
 
   <div class="nav">
@@ -245,14 +255,23 @@ function escapeHtml(str){return String(str).replace(/[&<>'"]/g,c=>({'&':'&amp;',
 
 renderToday();renderAll();renderStats();
   function exportData(){
-  const data = JSON.stringify(items, null, 2);
-  const blob = new Blob([data], {type:"application/json"});
+  const backup = {
+    app: "review_master",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    items: items
+  };
+
+  const data = JSON.stringify(backup, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
   a.href = url;
   a.download = "review_master_backup.json";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
 
   URL.revokeObjectURL(url);
 }
@@ -265,25 +284,35 @@ function importData(event){
 
   reader.onload = function(e){
     try{
-      const data = JSON.parse(e.target.result);
+      const json = JSON.parse(e.target.result);
 
-      if(!Array.isArray(data)){
-        alert("読み込みできないデータです");
+      let importedItems;
+
+      if(Array.isArray(json)){
+        importedItems = json;
+      }else if(Array.isArray(json.items)){
+        importedItems = json.items;
+      }else{
+        alert("読み込めないデータ形式です");
         return;
       }
 
       if(!confirm("現在のデータを上書きして読み込みますか？")) return;
 
-      items = data;
-      save();
+      items = importedItems;
+
+      localStorage.setItem("review_master", JSON.stringify(items));
 
       renderToday();
       renderAll();
       renderStats();
 
-      alert("読み込み完了しました");
+      event.target.value = "";
+
+      alert("データを読み込みました");
+
     }catch(error){
-      alert("ファイルの読み込みに失敗しました");
+      alert("読み込みに失敗しました");
     }
   };
 
